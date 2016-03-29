@@ -193,6 +193,11 @@ class WigglyBar(app.Canvas):
         self.text = visuals.TextVisual('0:00.00', color='white', pos=[150, 200, 0])
         self.text.font_size = self.font_size
 
+        # Let's put in more text so we know what method is being used to update this
+        self.method_text = scene.visuals.Text('Method: {}'.format(self.method),
+                                              color='white', pos=[50, 300, 0], anchor_x='left', parent=self.new_vbox)
+        self.method_text.font_size = self.font_size - 12.
+
         # Get the pivoting bar ready
         self.rod = visuals.BoxVisual(width=self.px_len/40, height=self.px_len/40, depth=self.px_len, color='white')
         self.rod.transform = transforms.MatrixTransform()
@@ -200,7 +205,7 @@ class WigglyBar(app.Canvas):
         self.rod.transform.scale((self.scale, self.scale, 0.0001))
         self.rod.transform.translate(self.center - piv_x_y_px)
 
-        # Show the pivote point (optional)
+        # Show the pivot point (optional)
         # self.center_point = visuals.EllipseVisual(center=self.ellipse_center,
         #                                           radius=(self.scale*self.px_len/15, self.scale*self.px_len/15),
         #                                           color='white')
@@ -234,6 +239,7 @@ class WigglyBar(app.Canvas):
         self.visuals.append(self.spring_1)
         self.visuals.append(self.mass)
         self.visuals.append(self.text)
+        self.visuals.append(self.method_text)
 
         # Set up a timer to update the image and give a real-time rendering
         self._timer = app.Timer('auto', connect=self.on_timer, start=True)
@@ -257,7 +263,7 @@ class WigglyBar(app.Canvas):
 
     def on_timer(self, ev):
         # Update x, theta, xdot, thetadot
-        self.params_update(dt=1/60)
+        self.params_update(dt=1/60, method=self.method)
 
         # Calculate change for the upper spring, relative to its starting point
         extra_term = self.theta - self.theta_not
@@ -322,31 +328,73 @@ class WigglyBar(app.Canvas):
         self.mass.transform.scale((self.scale, self.scale, 0.0001))
         self.mass.transform.translate(self.center + self.mass_loc)
 
-        # Update the timer with how long it's been
+        # Update the timer with how long it's been and the method text
         self.text.text = '{:0>2d}:{:0>2d}.{:0>2d}'.format(min_passed, sec_passed, millis_passed)
 
         # Trigger all of the drawing and updating
         self.update()
 
-    def params_update(self, dt):
-        # Uses Euler update method - Runge-Kutta later.
+    def params_update(self, dt, method='euler'):
+        # Uses either Euler method or Runge-Kutta, depending on your input to "method"
 
-        # Calculate the second derivative of x
-        x_dd_t1 = -self.b * self.x_dot * np.abs(self.x_dot)
-        x_dd_t2 = -self.spring_k1*(self.x + self.d2 * self.theta)
-        x_dot_dot = (x_dd_t1 + x_dd_t2)/self.little_m
+        if method.lower() == 'euler':
+            # Calculate the second derivative of x
+            x_dd_t1 = -self.b * self.x_dot * np.abs(self.x_dot)
+            x_dd_t2 = -self.spring_k1*(self.x + self.d2 * self.theta)
+            x_dot_dot = (x_dd_t1 + x_dd_t2)/self.little_m
 
-        # Calculate the second derivative of theta
-        term1 = -self.spring_k1 * self.d2 * self.x
-        term2 = -self.theta * (self.spring_k1*(self.d2 ** 2) + self.spring_k2*(self.d1 ** 2))
-        theta_dot_dot = (term1 + term2)/self.j_term
+            # Calculate the second derivative of theta
+            term1 = -self.spring_k1 * self.d2 * self.x
+            term2 = -self.theta * (self.spring_k1*(self.d2 ** 2) + self.spring_k2*(self.d1 ** 2))
+            theta_dot_dot = (term1 + term2)/self.j_term
 
-        # Update everything appropriately
+            # Update everything appropriately
+            self.t += dt
+            self.x += dt*self.x_dot
+            self.theta += dt*self.theta_dot
+            self.x_dot += dt * x_dot_dot
+            self.theta_dot += dt * theta_dot_dot
+        elif method.lower() == 'runge-kutta':
+            self._runge_kutta_update(dt)
+
+    def _runge_kutta_update(self, dt):
+        info_vector = np.asarray([self.x_dot, self.theta_dot, self.x, self.theta]).copy()
+
+        k1 = [((-self.b * info_vector[0] * np.abs(info_vector[0]))+
+               (-self.spring_k1*(info_vector[2] + self.d2 * info_vector[3])))/self.little_m,
+              ((-self.spring_k1 * self.d2 * info_vector[2]) +
+               (-info_vector[3] * (self.spring_k1*(self.d2 ** 2) + self.spring_k2*(self.d1 ** 2))))/self.j_term,
+              info_vector[0],
+              info_vector[1]]
+
+        k1 = np.asarray(k1) * dt
+
+        updated_est = info_vector + 0.5 * k1
+
+        k2 = [((-self.b * updated_est[0] * np.abs(updated_est[0]))+
+               (-self.spring_k1*(updated_est[2] + self.d2 * updated_est[3])))/self.little_m,
+              ((-self.spring_k1 * self.d2 * updated_est[2]) +
+               (-updated_est[3] * (self.spring_k1*(self.d2 ** 2) + self.spring_k2*(self.d1 ** 2))))/self.j_term,
+              updated_est[0],
+              updated_est[1]]
+
+        k2 = np.asarray(k2) * dt
+
+        updated_est = info_vector - k1 + 2 * k2
+
+        k3 = [((-self.b * updated_est[0] * np.abs(updated_est[0]))+
+               (-self.spring_k1*(updated_est[2] + self.d2 * updated_est[3])))/self.little_m,
+              ((-self.spring_k1 * self.d2 * updated_est[2]) +
+               (-updated_est[3] * (self.spring_k1*(self.d2 ** 2) + self.spring_k2*(self.d1 ** 2))))/self.j_term,
+              updated_est[0],
+              updated_est[1]]
+
+        k3 = np.asarray(k3) * dt
+
+        final_est = info_vector + (1/6)*(k1 + 4*k2 + k3)
+
+        self.x_dot, self.theta_dot, self.x, self.theta = final_est.copy()
         self.t += dt
-        self.x += dt*self.x_dot
-        self.theta += dt*self.theta_dot
-        self.x_dot += dt * x_dot_dot
-        self.theta_dot += dt * theta_dot_dot
 
 
 if __name__ == '__main__':
