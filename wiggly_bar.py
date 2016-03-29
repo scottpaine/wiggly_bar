@@ -2,6 +2,28 @@ from vispy import app, visuals
 from vispy.visuals import transforms
 import sys
 import numpy as np
+import string
+from PyQt4 import QtGui, QtCore, Qt
+
+VALID_METHODS = ['euler', 'runge-kutta']
+
+PARAMETERS = [('d1',        0.0,      10.0,    'double', 0.97 ),
+              ('d2',        0.0,      10.0,    'double', 0.55 ),
+              ('m',         0.01,     100.0,   'double', 2.0  ),
+              ('M',         0.01,     100.0,   'double', 12.5 ),
+              ('k1',        0.01,     100.0,   'double', 1.35 ),
+              ('k2',        0.01,     100.0,   'double', 0.50 ),
+              ('b',         0.0,      1000.0,  'double', 25.75),
+              ('x',         -0.5,     25.0,    'double', -0.01),
+              ('x dot',     -10.0,    10.0,    'double', -0.12),
+              ('theta',     -np.pi/5, np.pi/5, 'double', 0.005),
+              ('theta dot', -np.pi/2, np.pi/2, 'double', 0.0  ),
+              ('scale',     1,        500,     'int',    50   )]
+
+CONVERSION_DICT = {'d1': 'd1', 'd2': 'd2', 'm': 'little_m', 'M': 'big_m',
+                   'k1': 'spring_k1', 'k2': 'spring_k2', 'b': 'b',
+                   'x': 'x', 'x dot': 'x_dot', 'theta': 'theta', 'theta dot': 'theta_dot',
+                   'scale': 'scale'}
 
 
 def make_spiral(num_points=100, num_turns=4, height=12, radius=2.0,
@@ -130,30 +152,35 @@ def make_spring(num_points=300, num_turns=4, height=12, radius=2.0,
 
 
 class WigglyBar(app.Canvas):
-    def __init__(self):
+    def __init__(self, d1=None, d2=None, little_m=None, big_m=None,
+                 spring_k1=None, spring_k2=None, b=None,
+                 x=None, x_dot=None, theta=None, theta_dot=None,
+                 px_len=None, scale=None, pivot=False, method='Euler'):
         app.Canvas.__init__(self, title='Wiggly Bar', size=(800, 800))
+
+        self.method = string.capwords(method, '-') if method.lower() in VALID_METHODS else 'Euler'
 
         # Initialize constants for the system
         self.t = 0
-        self.d1 = 0.97
-        self.d2 = 0.55
-        self.little_m = 2.0
-        self.big_m = 12.5
-        self.spring_k1 = 1.35
-        self.spring_k2 = 0.5
-        self.b = 25.75
+        self.d1 = 0.97 if d1 is None else d1
+        self.d2 = 0.55 if d2 is None else d2
+        self.little_m = 2.0 if little_m is None else little_m
+        self.big_m = 12.5 if big_m is None else big_m
+        self.spring_k1 = 1.35 if spring_k1 is None else spring_k1
+        self.spring_k2 = 0.5 if spring_k2 is None else spring_k2
+        self.b = 25.75 if b is None else b
         self.j_term = (1/3)*self.big_m*(self.d1 ** 3 + self.d2 ** 3)/(self.d1 + self.d2)
-        self.x = -0.010
-        self.x_dot = -0.12
-        self.theta = 0.005
-        self.theta_dot = 0.0
+        self.x = -0.010 if x is None else x
+        self.x_dot = -0.12 if x_dot is None else x_dot
+        self.theta = 0.005 if theta is None else theta
+        self.theta_dot = 0.0 if theta_dot is None else theta_dot
         self.theta_not = self.theta  # I'll need this later
 
         # Initialize constants for display
-        self.px_len = 10
-        self.scale = 50
-        self.center = np.asarray((500, 400 - 1.5*self.scale))
-        self.ellipse_center = (500, 400)
+        self.px_len = 10 if px_len is None else px_len
+        self.scale = 50 if scale is None else scale
+        self.center = np.asarray((500, 450 - 1.5*self.scale))
+        self.ellipse_center = (500, 450)
         self.visuals = []
         self.px_per_m = self.scale * self.px_len/(self.d1 + self.d2)
         self.rod_length = self.scale * self.px_len/self.px_per_m
@@ -189,13 +216,13 @@ class WigglyBar(app.Canvas):
         points = make_spring(height=self.px_len/4, radius=self.px_len/24)
 
         # Put up a text visual to display time info
-        self.font_size = 36.
-        self.text = visuals.TextVisual('0:00.00', color='white', pos=[150, 200, 0])
+        self.font_size = 24.
+        self.text = visuals.TextVisual('0:00.00', color='white', pos=[50, 250, 0], anchor_x='left')
         self.text.font_size = self.font_size
 
         # Let's put in more text so we know what method is being used to update this
-        self.method_text = scene.visuals.Text('Method: {}'.format(self.method),
-                                              color='white', pos=[50, 300, 0], anchor_x='left', parent=self.new_vbox)
+        self.method_text = visuals.TextVisual('Method: {}'.format(self.method),
+                                              color='white', pos=[50, 300, 0], anchor_x='left')
         self.method_text.font_size = self.font_size - 12.
 
         # Get the pivoting bar ready
@@ -206,9 +233,9 @@ class WigglyBar(app.Canvas):
         self.rod.transform.translate(self.center - piv_x_y_px)
 
         # Show the pivot point (optional)
-        # self.center_point = visuals.EllipseVisual(center=self.ellipse_center,
-        #                                           radius=(self.scale*self.px_len/15, self.scale*self.px_len/15),
-        #                                           color='white')
+        self.center_point = visuals.EllipseVisual(center=self.ellipse_center,
+                                                  radius=(self.scale*self.px_len/25, self.scale*self.px_len/25),
+                                                  color='white')
 
         # Get the upper spring ready.
         self.spring_2 = visuals.TubeVisual(points, radius=self.px_len/100, color=(0.5, 0.5, 1, 1))
@@ -233,7 +260,8 @@ class WigglyBar(app.Canvas):
         self.mass.transform.translate(self.center + self.mass_loc)
 
         # Append all the visuals
-        # self.visuals.append(self.center_point)
+        if pivot:
+            self.visuals.append(self.center_point)
         self.visuals.append(self.rod)
         self.visuals.append(self.spring_2)
         self.visuals.append(self.spring_1)
@@ -262,7 +290,7 @@ class WigglyBar(app.Canvas):
             vis.transforms.configure(canvas=self, viewport=vp)
 
     def on_timer(self, ev):
-        # Update x, theta, xdot, thetadot
+        # Update x, theta, x_dot, theta_dot
         self.params_update(dt=1/60, method=self.method)
 
         # Calculate change for the upper spring, relative to its starting point
@@ -396,8 +424,194 @@ class WigglyBar(app.Canvas):
         self.x_dot, self.theta_dot, self.x, self.theta = final_est.copy()
         self.t += dt
 
+    def reset_parms(self, d1=None, d2=None, little_m=None, big_m=None,
+                    spring_k1=None, spring_k2=None, b=None,
+                    x=None, x_dot=None, theta=None, theta_dot=None,
+                    px_len=None, scale=None, pivot=False, method='Euler'):
+
+        # app.Canvas.__init__(self, title='Wiggly Bar', size=(800, 800))
+
+        self.method = string.capwords(method, '-') if method.lower() in VALID_METHODS else 'Euler'
+        self.method_text.text = 'Method: {}'.format(self.method)
+
+        # Initialize constants for the system
+        self.t = 0
+        self.d1 = 0.97 if d1 is None else d1
+        self.d2 = 0.55 if d2 is None else d2
+        self.little_m = 2.0 if little_m is None else little_m
+        self.big_m = 12.5 if big_m is None else big_m
+        self.spring_k1 = 1.35 if spring_k1 is None else spring_k1
+        self.spring_k2 = 0.5 if spring_k2 is None else spring_k2
+        self.b = 25.75 if b is None else b
+        self.j_term = (1 / 3) * self.big_m * (self.d1 ** 3 + self.d2 ** 3) / (self.d1 + self.d2)
+        self.x = -0.010 if x is None else x
+        self.x_dot = -0.12 if x_dot is None else x_dot
+        self.theta = 0.005 if theta is None else theta
+        self.theta_dot = 0.0 if theta_dot is None else theta_dot
+        self.theta_not = self.theta  # I'll need this later
+
+        # Initialize constants for display
+        self.px_len = 10 if px_len is None else px_len
+        self.scale = 50 if scale is None else scale
+        self.center = np.asarray((500, 450 - 1.5 * self.scale))
+        self.px_per_m = self.scale * self.px_len / (0.97 + 0.55)
+        self.rod_length = self.scale * self.px_len / self.px_per_m
+
+        # Set up stuff for establishing a pivot point to rotate about
+        self.pivot_loc = (self.d1 - self.d2) / 2
+        self.pivot_loc_px = self.pivot_loc * self.px_per_m
+        piv_x_y_px = np.asarray((
+            -1 * self.pivot_loc_px * np.sin(self.theta),
+            self.pivot_loc_px * (1 - np.cos(self.theta))
+        ))
+
+        # Set up positioning info for the springs and mass, as well as some constants for use later
+        # NOTE: Springs are not like boxes. Their center of rotation is at one end of the spring, unlike
+        #       the box where it is in the middle. The location and scaling is set to reflect this. This means
+        #       there's a little bit of x- and y-translation needed to properly center them.
+        self.s2_loc = np.asarray(
+            [self.d1 * self.px_per_m * np.sin(self.theta),
+             self.px_len / 8 * self.scale + self.px_len / 100 * self.scale - self.d1 * self.px_per_m * np.cos(
+                 self.theta)]
+        )
+        self.s1_l_not = self.px_len / 4 * self.scale
+        self.x_is_0 = -self.d2 * self.px_per_m * np.sin(self.theta_not) - 1.5 * self.s1_l_not
+        self.s1_loc = np.asarray(
+            [self.x_is_0 + 0.5 * self.s1_l_not + self.x * self.px_per_m,
+             self.px_len / 100 * self.scale + self.px_len / 8 * self.scale + self.d2 * self.px_per_m * np.cos(
+                 self.theta)]
+        )
+        self.mass_loc = np.asarray(
+            [self.x_is_0 + self.x * self.px_per_m,
+             self.px_len / 8 * self.scale + self.d2 * self.px_per_m * np.cos(self.theta)]
+        )
+
+        self.rod.transform = transforms.MatrixTransform()
+        self.rod.transform.rotate(np.rad2deg(self.theta), (0, 0, 1))
+        self.rod.transform.scale((self.scale, self.scale, 0.0001))
+        self.rod.transform.translate(self.center - piv_x_y_px)
+
+        if pivot:
+            self.visuals.append(self.center_point)
+        else:
+            try:
+                del self.visuals[self.visuals.index(self.center_point)]
+            except:
+                pass
+
+
+class Paramlist(object):
+
+    def __init__(self, parameters):
+        self.parameters = parameters
+        self.props = {}
+        self.props['pivot'] = False
+        self.props['method'] = 'Euler'
+        for nameV, minV, maxV, typeV, iniV in parameters:
+            nameV = CONVERSION_DICT[nameV]
+            self.props[nameV] = iniV
+
+
+class SetupWidget(QtGui.QWidget):
+
+    changed_parameter_sig = QtCore.pyqtSignal(Paramlist, name='paramChanged')
+
+    def __init__(self, parent=None):
+        super(SetupWidget, self).__init__(parent)
+
+        self.param = Paramlist(PARAMETERS)
+
+        self.pivot_chk = QtGui.QCheckBox(u"Hide/show pivot point")
+        self.pivot_chk.setChecked(self.param.props['pivot'])
+        self.pivot_chk.toggled.connect(self.update_parameters)
+
+        self.method_list = ['Euler', 'Runge-Kutta']
+        self.method_options = QtGui.QComboBox()
+        self.method_options.addItems(self.method_list)
+        self.method_options.setCurrentIndex(self.method_list.index((self.param.props['method'])))
+        self.method_options.currentIndexChanged.connect(self.update_parameters)
+
+        self.parameter_groupbox = QtGui.QGroupBox(u"System Parameters")
+
+        plist = []
+        self.psets = []
+        param_boxes_layout = QtGui.QGridLayout()
+        for nameV, minV, maxV, typeV, iniV in self.param.parameters:
+            plist.append(QtGui.QLabel(nameV))
+            if typeV == 'double':
+                self.psets.append(QtGui.QDoubleSpinBox())
+                self.psets[-1].setDecimals(3)
+                self.psets[-1].setSingleStep(0.01)
+            elif typeV == 'int':
+                self.psets.append(QtGui.QSpinBox())
+            self.psets[-1].setMaximum(maxV)
+            self.psets[-1].setMinimum(minV)
+            self.psets[-1].setValue(iniV)
+
+        for pos in range(len(plist)):
+            param_boxes_layout.addWidget(plist[pos], pos+1, 0)
+            param_boxes_layout.addWidget(self.psets[pos], pos+1, 1)
+            self.psets[pos].valueChanged.connect(self.update_parameters)
+
+        param_boxes_layout.addWidget(QtGui.QLabel('Method: '), len(plist)+2, 0)
+        param_boxes_layout.addWidget(self.method_options, len(plist)+2, 1)
+
+        param_boxes_layout.addWidget(self.pivot_chk, len(plist)+3, 0, len(plist)+4, 0)
+
+        self.parameter_groupbox.setLayout(param_boxes_layout)
+
+        vbox = QtGui.QVBoxLayout()
+        hbox = QtGui.QHBoxLayout()
+        hbox.addWidget(self.parameter_groupbox)
+        hbox.addStretch(5.0)
+        vbox.addLayout(hbox)
+        vbox.addStretch(1.0)
+
+        self.setLayout(vbox)
+
+    def update_parameters(self, option):
+        self.param.props['pivot'] = self.pivot_chk.isChecked()
+        self.param.props['method'] = self.method_list[self.method_options.currentIndex()]
+        keys = map(lambda x: x[0], self.param.parameters)
+        for pos, nameV in enumerate(keys):
+            self.param.props[CONVERSION_DICT[nameV]] = self.psets[pos].value()
+        self.changed_parameter_sig.emit(self.param)
+
+
+class MainWindow(QtGui.QMainWindow):
+
+    def __init__(self, param=None):
+        QtGui.QMainWindow.__init__(self)
+
+        self.resize(1000, 800)
+        self.setWindowTitle('RIT Midterm Exam Viewer')
+
+        self.parameter_object = SetupWidget(self)
+        self.parameter_object.param = param if param is not None else self.parameter_object.param
+        self.parameter_object.changed_parameter_sig.connect(self.update_view)
+
+        self.view_box = WigglyBar(**self.parameter_object.param.props)
+
+        self.view_box.create_native()
+        self.view_box.native.setParent(self)
+
+        splitter = QtGui.QSplitter(QtCore.Qt.Horizontal)
+        splitter.addWidget(self.parameter_object)
+        splitter.addWidget(self.view_box.native)
+
+        print(splitter.widget(1))
+
+        self.setCentralWidget(splitter)
+
+        print(self.centralWidget().widget(1))
+
+    def update_view(self, param):
+        self.view_box.reset_parms(**param.props)
+
 
 if __name__ == '__main__':
-    win = WigglyBar()
-    if sys.flags.interactive != 1:
-        win.app.run()
+
+    appQt = QtGui.QApplication(sys.argv)
+    win = MainWindow()
+    win.show()
+    appQt.exec_()
