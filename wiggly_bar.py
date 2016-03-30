@@ -3,7 +3,11 @@ from vispy.visuals import transforms
 import sys
 import numpy as np
 import string
-from PyQt4 import QtGui, QtCore, Qt
+import logging
+import traceback
+from PyQt4 import QtGui, QtCore
+
+logger = logging.getLogger(__name__)
 
 VALID_METHODS = ['euler', 'runge-kutta']
 
@@ -636,8 +640,16 @@ class MainWindow(QtGui.QMainWindow):
     def update_view(self, param):
         self.view_box.reset_parms(**param.props)
 
+def uncaught_exceptions(ex_type, ex_value, ex_traceback):
+    lines = traceback.format_exception(ex_type, ex_value, ex_traceback)
+    msg = ''.join(lines)
+    logger.error('Uncaught Exception\n%s', msg)
+
 
 def main():
+    sys.excepthook = uncaught_exceptions
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger().setLevel(logging.INFO)
     appQt = QtGui.QApplication(sys.argv)
     win = MainWindow()
     win.show()

@@ -13,7 +13,7 @@ setup(
     entry_points={
         'console_scripts':
             [
-                'wiggly_bar = wiggly_bar:main'
+                'wiggly_bar = wiggly_bar.wiggly_bar:main'
             ]
     }
 )

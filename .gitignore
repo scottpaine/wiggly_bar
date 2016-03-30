@@ -1,1 +1,6 @@
 *.orig
+__pycache__/*
+build/*
+dist/*
+wiggly_bar.egg-info/*
+*.spec
