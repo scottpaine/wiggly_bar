@@ -186,7 +186,6 @@ class WigglyBar(app.Canvas):
         self.center = np.asarray((500, 450))
         self.visuals = []
         self.px_per_m = self.scale * self.px_len/(self.d1 + self.d2)
-        self.rod_length = self.scale * self.px_len/self.px_per_m
         self.rod_scale = (self.d1 + self.d2)/self.standard_length
 
         # Set up stuff for establishing a pivot point to rotate about
@@ -237,9 +236,12 @@ class WigglyBar(app.Canvas):
         self.rod.transform.translate(self.center - piv_x_y_px)
 
         # Show the pivot point (optional)
-        self.center_point = visuals.EllipseVisual(center=self.center,
-                                                  radius=(self.scale*self.px_len/30, self.scale*self.px_len/30),
-                                                  color='white')
+        pivot_center = (self.center[0], self.center[1], -self.px_len/75)
+        self.center_point = visuals.SphereVisual(radius=self.px_len/75,
+                                                 color='red')
+        self.center_point.transform = transforms.MatrixTransform()
+        self.center_point.transform.scale((self.scale, self.scale, 0.0001))
+        self.center_point.transform.translate(pivot_center)
 
         # Get the upper spring ready.
         self.spring_2 = visuals.TubeVisual(points, radius=self.px_len/100, color=(0.5, 0.5, 1, 1))
@@ -264,8 +266,7 @@ class WigglyBar(app.Canvas):
         self.mass.transform.translate(self.center + self.mass_loc)
 
         # Append all the visuals
-        if pivot:
-            self.visuals.append(self.center_point)
+        self.visuals.append(self.center_point)
         self.visuals.append(self.rod)
         self.visuals.append(self.spring_2)
         self.visuals.append(self.spring_1)
@@ -462,9 +463,7 @@ class WigglyBar(app.Canvas):
         # Initialize constants for display
         self.px_len = 10 if px_len is None else px_len
         self.scale = 50 if scale is None else scale
-        self.center = np.asarray((500, 450))
         self.px_per_m = self.scale * self.px_len / (0.97 + 0.55)
-        self.rod_length = self.scale * self.px_len / self.px_per_m
         self.rod_scale = (self.d1 + self.d2)/self.standard_length
 
         # Set up stuff for establishing a pivot point to rotate about
@@ -500,13 +499,18 @@ class WigglyBar(app.Canvas):
         self.rod.transform.scale((self.scale, self.scale * self.rod_scale, 0.0001))
         self.rod.transform.translate(self.center - piv_x_y_px)
 
+        pivot_center = (self.center[0], self.center[1], -self.px_len/75)
+        self.center_point.transform = transforms.MatrixTransform()
+        self.center_point.transform.scale((self.scale, self.scale, 0.0001))
+        self.center_point.transform.translate(pivot_center)
+
 
 class Paramlist(object):
 
     def __init__(self, parameters):
         self.parameters = parameters
         self.props = {}
-        self.props['pivot'] = True
+        self.props['pivot'] = False
         self.props['method'] = 'Euler'
         for nameV, minV, maxV, typeV, iniV in parameters:
             nameV = CONVERSION_DICT[nameV]
