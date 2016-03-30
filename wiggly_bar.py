@@ -619,7 +619,7 @@ class MainWindow(QtGui.QMainWindow):
         QtGui.QMainWindow.__init__(self)
 
         self.resize(1067, 800)
-        self.setWindowIcon(QtGui.QIcon('spring.png'))
+        self.setWindowIcon(QtGui.QIcon('spring.ico'))
         self.setWindowTitle('RIT Midterm Exam Investigator')
 
         self.parameter_object = SetupWidget(self)
