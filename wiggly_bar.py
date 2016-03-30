@@ -18,12 +18,13 @@ PARAMETERS = [('d1',        0.0,      10.0,    'double', 0.97 ),
               ('x dot',     -10.0,    10.0,    'double', -0.12),
               ('theta',     -np.pi/5, np.pi/5, 'double', 0.005),
               ('theta dot', -np.pi/2, np.pi/2, 'double', 0.0  ),
-              ('scale',     1,        500,     'int',    50   )]
+              ('scale',     1,        500,     'int',    50   ),
+              ('time step', 0.001,    2.0,     'double', 1/60 )]
 
 CONVERSION_DICT = {'d1': 'd1', 'd2': 'd2', 'm': 'little_m', 'M': 'big_m',
                    'k1': 'spring_k1', 'k2': 'spring_k2', 'b': 'b',
                    'x': 'x', 'x dot': 'x_dot', 'theta': 'theta', 'theta dot': 'theta_dot',
-                   'scale': 'scale'}
+                   'scale': 'scale', 'time step': 'dt'}
 
 
 def make_spiral(num_points=100, num_turns=4, height=12, radius=2.0,
@@ -155,13 +156,15 @@ class WigglyBar(app.Canvas):
     def __init__(self, d1=None, d2=None, little_m=None, big_m=None,
                  spring_k1=None, spring_k2=None, b=None,
                  x=None, x_dot=None, theta=None, theta_dot=None,
-                 px_len=None, scale=None, pivot=False, method='Euler'):
+                 px_len=None, scale=None, pivot=False, method='Euler', dt=None):
         app.Canvas.__init__(self, title='Wiggly Bar', size=(800, 800))
 
         self.method = string.capwords(method, '-') if method.lower() in VALID_METHODS else 'Euler'
+        self.show_pivot = pivot
 
         # Initialize constants for the system
         self.t = 0
+        self.dt = 1/60 if dt is None else dt
         self.d1 = 0.97 if d1 is None else d1
         self.d2 = 0.55 if d2 is None else d2
         self.standard_length = 0.97 + 0.55
@@ -280,7 +283,10 @@ class WigglyBar(app.Canvas):
         self.context.set_viewport(0, 0, *self.physical_size)
         self.context.clear()
         for vis in self.visuals:
-            vis.draw()
+            if vis == self.center_point and not self.show_pivot:
+                continue
+            else:
+                vis.draw()
 
     def on_resize(self, event):
         # Set canvas viewport and reconfigure visual transforms to match.
@@ -292,7 +298,7 @@ class WigglyBar(app.Canvas):
 
     def on_timer(self, ev):
         # Update x, theta, x_dot, theta_dot
-        self.params_update(dt=1/60, method=self.method)
+        self.params_update(dt=self.dt, method=self.method)
 
         # Calculate change for the upper spring, relative to its starting point
         extra_term = self.theta - self.theta_not
@@ -428,15 +434,17 @@ class WigglyBar(app.Canvas):
     def reset_parms(self, d1=None, d2=None, little_m=None, big_m=None,
                     spring_k1=None, spring_k2=None, b=None,
                     x=None, x_dot=None, theta=None, theta_dot=None,
-                    px_len=None, scale=None, pivot=False, method='Euler'):
+                    px_len=None, scale=None, pivot=False, method='Euler', dt=None):
 
         # app.Canvas.__init__(self, title='Wiggly Bar', size=(800, 800))
 
         self.method = string.capwords(method, '-') if method.lower() in VALID_METHODS else 'Euler'
         self.method_text.text = 'Method: {}'.format(self.method)
+        self.show_pivot = pivot
 
         # Initialize constants for the system
         self.t = 0
+        self.dt = 1/60 if dt is None else dt
         self.d1 = 0.97 if d1 is None else d1
         self.d2 = 0.55 if d2 is None else d2
         self.little_m = 2.0 if little_m is None else little_m
@@ -491,14 +499,6 @@ class WigglyBar(app.Canvas):
         self.rod.transform.rotate(np.rad2deg(self.theta), (0, 0, 1))
         self.rod.transform.scale((self.scale, self.scale * self.rod_scale, 0.0001))
         self.rod.transform.translate(self.center - piv_x_y_px)
-
-        if pivot:
-            self.visuals.append(self.center_point)
-        else:
-            try:
-                del self.visuals[self.visuals.index(self.center_point)]
-            except ValueError:
-                pass
 
 
 class Paramlist(object):
@@ -584,7 +584,7 @@ class MainWindow(QtGui.QMainWindow):
     def __init__(self, param=None):
         QtGui.QMainWindow.__init__(self)
 
-        self.resize(1000, 800)
+        self.resize(1067, 800)
         self.setWindowTitle('RIT Midterm Exam Viewer')
 
         self.parameter_object = SetupWidget(self)
