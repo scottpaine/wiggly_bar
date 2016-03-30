@@ -637,9 +637,11 @@ class MainWindow(QtGui.QMainWindow):
         self.view_box.reset_parms(**param.props)
 
 
-if __name__ == '__main__':
-
+def main():
     appQt = QtGui.QApplication(sys.argv)
     win = MainWindow()
     win.show()
     appQt.exec_()
+
+if __name__ == '__main__':
+    main()
