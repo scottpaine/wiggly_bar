@@ -11,20 +11,21 @@ PARAMETERS = [('d1',        0.0,      10.0,    'double', 0.97 ),
               ('d2',        0.0,      10.0,    'double', 0.55 ),
               ('m',         0.01,     100.0,   'double', 2.0  ),
               ('M',         0.01,     100.0,   'double', 12.5 ),
-              ('k1',        0.01,     100.0,   'double', 1.35 ),
-              ('k2',        0.01,     100.0,   'double', 0.50 ),
-              ('b',         0.0,      1000.0,  'double', 25.75),
-              ('x',         -0.5,     25.0,    'double', -0.01),
+              ('k1',        0.01,     75.0,   'double', 1.35 ),
+              ('k2',        0.01,     75.0,   'double', 0.50 ),
+              ('b',         1.0,      1000.0,  'double', 25.75),
+              ('time step', 0.001,    1.0,     'double', 1/60 ),
+              ('x',         -0.25,    0.25,    'double', -0.01),
               ('x dot',     -10.0,    10.0,    'double', -0.12),
               ('theta',     -np.pi/5, np.pi/5, 'double', 0.005),
               ('theta dot', -np.pi/2, np.pi/2, 'double', 0.0  ),
-              ('scale',     1,        500,     'int',    50   ),
-              ('time step', 0.001,    2.0,     'double', 1/60 )]
+              ('scale',     5,        500,     'int',    50   ),
+              ('font size', 6.0,      128.0,   'double', 36.0 )]
 
 CONVERSION_DICT = {'d1': 'd1', 'd2': 'd2', 'm': 'little_m', 'M': 'big_m',
                    'k1': 'spring_k1', 'k2': 'spring_k2', 'b': 'b',
                    'x': 'x', 'x dot': 'x_dot', 'theta': 'theta', 'theta dot': 'theta_dot',
-                   'scale': 'scale', 'time step': 'dt'}
+                   'scale': 'scale', 'time step': 'dt', 'font size': 'font_size'}
 
 
 def make_spiral(num_points=100, num_turns=4, height=12, radius=2.0,
@@ -156,7 +157,7 @@ class WigglyBar(app.Canvas):
     def __init__(self, d1=None, d2=None, little_m=None, big_m=None,
                  spring_k1=None, spring_k2=None, b=None,
                  x=None, x_dot=None, theta=None, theta_dot=None,
-                 px_len=None, scale=None, pivot=False, method='Euler', dt=None):
+                 px_len=None, scale=None, pivot=False, method='Euler', dt=None, font_size=None):
         app.Canvas.__init__(self, title='Wiggly Bar', size=(800, 800))
 
         self.method = string.capwords(method, '-') if method.lower() in VALID_METHODS else 'Euler'
@@ -219,20 +220,22 @@ class WigglyBar(app.Canvas):
         points = make_spring(height=self.px_len/4, radius=self.px_len/24)
 
         # Put up a text visual to display time info
-        self.font_size = 24.
-        self.text = visuals.TextVisual('0:00.00', color='white', pos=[50, 250, 0], anchor_x='left')
+        self.font_size = 24. if font_size is None else font_size
+        self.text = visuals.TextVisual('0:00.00', color='white', pos=[50, 250, 0],
+                                       anchor_x='left', anchor_y='bottom')
         self.text.font_size = self.font_size
 
         # Let's put in more text so we know what method is being used to update this
         self.method_text = visuals.TextVisual('Method: {}'.format(self.method),
-                                              color='white', pos=[50, 300, 0], anchor_x='left')
-        self.method_text.font_size = self.font_size - 12.
+                                              color='white', pos=[50, 250 + 2/3 * font_size, 0],
+                                              anchor_x='left', anchor_y='top')
+        self.method_text.font_size = 2/3 * self.font_size
 
         # Get the pivoting bar ready
         self.rod = visuals.BoxVisual(width=self.px_len/40, height=self.px_len/40, depth=self.px_len, color='white')
         self.rod.transform = transforms.MatrixTransform()
-        self.rod.transform.rotate(np.rad2deg(self.theta), (0, 0, 1))
         self.rod.transform.scale((self.scale, self.scale * self.rod_scale, 0.0001))
+        self.rod.transform.rotate(np.rad2deg(self.theta), (0, 0, 1))
         self.rod.transform.translate(self.center - piv_x_y_px)
 
         # Show the pivot point (optional)
@@ -336,8 +339,8 @@ class WigglyBar(app.Canvas):
 
         # Apply the necessary transformations to the rod
         self.rod.transform.reset()
-        self.rod.transform.rotate(np.rad2deg(self.theta), (0, 0, 1))
         self.rod.transform.scale((self.scale, self.scale * self.rod_scale, 0.0001))
+        self.rod.transform.rotate(np.rad2deg(self.theta), (0, 0, 1))
         self.rod.transform.translate(self.center - piv_x_y_px)
 
         # Redraw and rescale the second spring
@@ -435,12 +438,15 @@ class WigglyBar(app.Canvas):
     def reset_parms(self, d1=None, d2=None, little_m=None, big_m=None,
                     spring_k1=None, spring_k2=None, b=None,
                     x=None, x_dot=None, theta=None, theta_dot=None,
-                    px_len=None, scale=None, pivot=False, method='Euler', dt=None):
+                    px_len=None, scale=None, pivot=False, method='Euler', dt=None, font_size=None):
 
         # app.Canvas.__init__(self, title='Wiggly Bar', size=(800, 800))
 
         self.method = string.capwords(method, '-') if method.lower() in VALID_METHODS else 'Euler'
+        self.font_size = font_size
         self.method_text.text = 'Method: {}'.format(self.method)
+        self.method_text.font_size = 2/3 * self.font_size
+        self.text.font_size = self.font_size
         self.show_pivot = pivot
 
         # Initialize constants for the system
@@ -495,8 +501,8 @@ class WigglyBar(app.Canvas):
         )
 
         self.rod.transform = transforms.MatrixTransform()
-        self.rod.transform.rotate(np.rad2deg(self.theta), (0, 0, 1))
         self.rod.transform.scale((self.scale, self.scale * self.rod_scale, 0.0001))
+        self.rod.transform.rotate(np.rad2deg(self.theta), (0, 0, 1))
         self.rod.transform.translate(self.center - piv_x_y_px)
 
         pivot_center = (self.center[0], self.center[1], -self.px_len/75)
@@ -537,37 +543,57 @@ class SetupWidget(QtGui.QWidget):
         self.method_options.currentIndexChanged.connect(self.update_parameters)
 
         self.parameter_groupbox = QtGui.QGroupBox(u"System Parameters")
+        self.conditions_groupbox = QtGui.QGroupBox(u"Initial Conditions")
+        self.display_groupbox = QtGui.QGroupBox(u"Display Parameters")
+
+        self.groupbox_list = [self.parameter_groupbox, self.conditions_groupbox, self.display_groupbox]
+
+        self.splitter = QtGui.QSplitter(QtCore.Qt.Vertical)
 
         plist = []
         self.psets = []
-        param_boxes_layout = QtGui.QGridLayout()
+        important_positions = [0, ]
+        param_boxes_layout = [QtGui.QGridLayout(),
+                              QtGui.QGridLayout(),
+                              QtGui.QGridLayout()]
         for nameV, minV, maxV, typeV, iniV in self.param.parameters:
             plist.append(QtGui.QLabel(nameV))
+            if nameV == 'x' or nameV == 'scale':
+                important_positions.append(len(plist) - 1)
             if typeV == 'double':
                 self.psets.append(QtGui.QDoubleSpinBox())
                 self.psets[-1].setDecimals(3)
-                self.psets[-1].setSingleStep(0.01)
+                if nameV == 'font size':
+                    self.psets[-1].setSingleStep(1.0)
+                else:
+                    self.psets[-1].setSingleStep(0.01)
             elif typeV == 'int':
                 self.psets.append(QtGui.QSpinBox())
             self.psets[-1].setMaximum(maxV)
             self.psets[-1].setMinimum(minV)
             self.psets[-1].setValue(iniV)
 
+        pidx = -1
         for pos in range(len(plist)):
-            param_boxes_layout.addWidget(plist[pos], pos+1, 0)
-            param_boxes_layout.addWidget(self.psets[pos], pos+1, 1)
+            if pos in important_positions:
+                pidx += 1
+            param_boxes_layout[pidx].addWidget(plist[pos], pos + pidx, 0)
+            param_boxes_layout[pidx].addWidget(self.psets[pos], pos + pidx, 1)
             self.psets[pos].valueChanged.connect(self.update_parameters)
 
-        param_boxes_layout.addWidget(QtGui.QLabel('Method: '), len(plist)+2, 0)
-        param_boxes_layout.addWidget(self.method_options, len(plist)+2, 1)
+        param_boxes_layout[0].addWidget(QtGui.QLabel('Method: '), 8, 0)
+        param_boxes_layout[0].addWidget(self.method_options, 8, 1)
+        param_boxes_layout[-1].addWidget(self.pivot_chk, 2, 0, 3, 0)
 
-        param_boxes_layout.addWidget(self.pivot_chk, len(plist)+3, 0, len(plist)+4, 0)
+        for groupbox, layout in zip(self.groupbox_list, param_boxes_layout):
+            groupbox.setLayout(layout)
 
-        self.parameter_groupbox.setLayout(param_boxes_layout)
+        for groupbox in self.groupbox_list:
+            self.splitter.addWidget(groupbox)
 
         vbox = QtGui.QVBoxLayout()
         hbox = QtGui.QHBoxLayout()
-        hbox.addWidget(self.parameter_groupbox)
+        hbox.addWidget(self.splitter)
         hbox.addStretch(5.0)
         vbox.addLayout(hbox)
         vbox.addStretch(1.0)
@@ -589,7 +615,8 @@ class MainWindow(QtGui.QMainWindow):
         QtGui.QMainWindow.__init__(self)
 
         self.resize(1067, 800)
-        self.setWindowTitle('RIT Midterm Exam Viewer')
+        self.setWindowIcon(QtGui.QIcon('spring.png'))
+        self.setWindowTitle('RIT Midterm Exam Investigator')
 
         self.parameter_object = SetupWidget(self)
         self.parameter_object.param = param if param is not None else self.parameter_object.param
