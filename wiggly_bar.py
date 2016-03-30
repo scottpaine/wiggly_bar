@@ -164,6 +164,7 @@ class WigglyBar(app.Canvas):
         self.t = 0
         self.d1 = 0.97 if d1 is None else d1
         self.d2 = 0.55 if d2 is None else d2
+        self.standard_length = 0.97 + 0.55
         self.little_m = 2.0 if little_m is None else little_m
         self.big_m = 12.5 if big_m is None else big_m
         self.spring_k1 = 1.35 if spring_k1 is None else spring_k1
@@ -179,18 +180,18 @@ class WigglyBar(app.Canvas):
         # Initialize constants for display
         self.px_len = 10 if px_len is None else px_len
         self.scale = 50 if scale is None else scale
-        self.center = np.asarray((500, 450 - 1.5*self.scale))
-        self.ellipse_center = (500, 450)
+        self.center = np.asarray((500, 450))
         self.visuals = []
         self.px_per_m = self.scale * self.px_len/(self.d1 + self.d2)
         self.rod_length = self.scale * self.px_len/self.px_per_m
+        self.rod_scale = (self.d1 + self.d2)/self.standard_length
 
         # Set up stuff for establishing a pivot point to rotate about
-        self.pivot_loc = (self.d1 - self.d2)/2
+        self.pivot_loc = (self.d2 - self.d1)/2
         self.pivot_loc_px = self.pivot_loc * self.px_per_m
         piv_x_y_px = np.asarray((
-            -1*self.pivot_loc_px*np.sin(self.theta),
-            self.pivot_loc_px*(1 - np.cos(self.theta))
+            self.pivot_loc_px*np.sin(self.theta),
+            -1 * self.pivot_loc_px * np.cos(self.theta)
         ))
 
         # Set up positioning info for the springs and mass, as well as some constants for use later
@@ -199,17 +200,17 @@ class WigglyBar(app.Canvas):
         #       there's a little bit of x- and y-translation needed to properly center them.
         self.s2_loc = np.asarray(
             [self.d1 * self.px_per_m * np.sin(self.theta),
-             self.px_len/8 * self.scale + self.px_len/100*self.scale - self.d1 * self.px_per_m * np.cos(self.theta)]
+             -self.d1 * self.px_per_m * np.cos(self.theta)]
         )
         self.s1_l_not = self.px_len / 4 * self.scale
         self.x_is_0 = -self.d2 * self.px_per_m * np.sin(self.theta_not) - 1.5*self.s1_l_not
         self.s1_loc = np.asarray(
             [self.x_is_0 + 0.5 * self.s1_l_not + self.x * self.px_per_m,
-             self.px_len / 100 * self.scale + self.px_len/8 * self.scale + self.d2 * self.px_per_m * np.cos(self.theta)]
+             self.d2 * self.px_per_m * np.cos(self.theta)]
         )
         self.mass_loc = np.asarray(
             [self.x_is_0 + self.x * self.px_per_m,
-             self.px_len/8 * self.scale + self.d2 * self.px_per_m * np.cos(self.theta)]
+             self.d2 * self.px_per_m * np.cos(self.theta)]
         )
 
         # Make the spring points
@@ -229,12 +230,12 @@ class WigglyBar(app.Canvas):
         self.rod = visuals.BoxVisual(width=self.px_len/40, height=self.px_len/40, depth=self.px_len, color='white')
         self.rod.transform = transforms.MatrixTransform()
         self.rod.transform.rotate(np.rad2deg(self.theta), (0, 0, 1))
-        self.rod.transform.scale((self.scale, self.scale, 0.0001))
+        self.rod.transform.scale((self.scale, self.scale * self.rod_scale, 0.0001))
         self.rod.transform.translate(self.center - piv_x_y_px)
 
         # Show the pivot point (optional)
-        self.center_point = visuals.EllipseVisual(center=self.ellipse_center,
-                                                  radius=(self.scale*self.px_len/25, self.scale*self.px_len/25),
+        self.center_point = visuals.EllipseVisual(center=self.center,
+                                                  radius=(self.scale*self.px_len/30, self.scale*self.px_len/30),
                                                   color='white')
 
         # Get the upper spring ready.
@@ -314,8 +315,8 @@ class WigglyBar(app.Canvas):
         # Calculate the new pivot location - this is important because the rotation occurs about
         # the center of the rod, so it has to be offset appropriately
         piv_x_y_px = np.asarray((
-            -1*self.pivot_loc_px*np.sin(self.theta),
-            self.pivot_loc_px*(np.cos(self.theta) - 1)
+            self.pivot_loc_px*np.sin(self.theta),
+            -1 * self.pivot_loc_px*np.cos(self.theta)
         ))
 
         # Calculate the new mass x location, relative (again) to some simple parameter where x=0
@@ -329,7 +330,7 @@ class WigglyBar(app.Canvas):
         # Apply the necessary transformations to the rod
         self.rod.transform.reset()
         self.rod.transform.rotate(np.rad2deg(self.theta), (0, 0, 1))
-        self.rod.transform.scale((self.scale, self.scale, 0.0001))
+        self.rod.transform.scale((self.scale, self.scale * self.rod_scale, 0.0001))
         self.rod.transform.translate(self.center - piv_x_y_px)
 
         # Redraw and rescale the second spring
@@ -453,16 +454,17 @@ class WigglyBar(app.Canvas):
         # Initialize constants for display
         self.px_len = 10 if px_len is None else px_len
         self.scale = 50 if scale is None else scale
-        self.center = np.asarray((500, 450 - 1.5 * self.scale))
+        self.center = np.asarray((500, 450))
         self.px_per_m = self.scale * self.px_len / (0.97 + 0.55)
         self.rod_length = self.scale * self.px_len / self.px_per_m
+        self.rod_scale = (self.d1 + self.d2)/self.standard_length
 
         # Set up stuff for establishing a pivot point to rotate about
-        self.pivot_loc = (self.d1 - self.d2) / 2
+        self.pivot_loc = (self.d2 - self.d1) / 2
         self.pivot_loc_px = self.pivot_loc * self.px_per_m
         piv_x_y_px = np.asarray((
-            -1 * self.pivot_loc_px * np.sin(self.theta),
-            self.pivot_loc_px * (1 - np.cos(self.theta))
+            self.pivot_loc_px * np.sin(self.theta),
+            -1 * self.pivot_loc_px * (np.cos(self.theta))
         ))
 
         # Set up positioning info for the springs and mass, as well as some constants for use later
@@ -471,24 +473,23 @@ class WigglyBar(app.Canvas):
         #       there's a little bit of x- and y-translation needed to properly center them.
         self.s2_loc = np.asarray(
             [self.d1 * self.px_per_m * np.sin(self.theta),
-             self.px_len / 8 * self.scale + self.px_len / 100 * self.scale - self.d1 * self.px_per_m * np.cos(
+             -self.d1 * self.px_per_m * np.cos(
                  self.theta)]
         )
         self.s1_l_not = self.px_len / 4 * self.scale
         self.x_is_0 = -self.d2 * self.px_per_m * np.sin(self.theta_not) - 1.5 * self.s1_l_not
         self.s1_loc = np.asarray(
             [self.x_is_0 + 0.5 * self.s1_l_not + self.x * self.px_per_m,
-             self.px_len / 100 * self.scale + self.px_len / 8 * self.scale + self.d2 * self.px_per_m * np.cos(
-                 self.theta)]
+             self.d2 * self.px_per_m * np.cos(self.theta)]
         )
         self.mass_loc = np.asarray(
             [self.x_is_0 + self.x * self.px_per_m,
-             self.px_len / 8 * self.scale + self.d2 * self.px_per_m * np.cos(self.theta)]
+             self.d2 * self.px_per_m * np.cos(self.theta)]
         )
 
         self.rod.transform = transforms.MatrixTransform()
         self.rod.transform.rotate(np.rad2deg(self.theta), (0, 0, 1))
-        self.rod.transform.scale((self.scale, self.scale, 0.0001))
+        self.rod.transform.scale((self.scale, self.scale * self.rod_scale, 0.0001))
         self.rod.transform.translate(self.center - piv_x_y_px)
 
         if pivot:
@@ -496,7 +497,7 @@ class WigglyBar(app.Canvas):
         else:
             try:
                 del self.visuals[self.visuals.index(self.center_point)]
-            except:
+            except ValueError:
                 pass
 
 
@@ -505,7 +506,7 @@ class Paramlist(object):
     def __init__(self, parameters):
         self.parameters = parameters
         self.props = {}
-        self.props['pivot'] = False
+        self.props['pivot'] = True
         self.props['method'] = 'Euler'
         for nameV, minV, maxV, typeV, iniV in parameters:
             nameV = CONVERSION_DICT[nameV]
@@ -521,7 +522,7 @@ class SetupWidget(QtGui.QWidget):
 
         self.param = Paramlist(PARAMETERS)
 
-        self.pivot_chk = QtGui.QCheckBox(u"Hide/show pivot point")
+        self.pivot_chk = QtGui.QCheckBox(u"Show pivot point")
         self.pivot_chk.setChecked(self.param.props['pivot'])
         self.pivot_chk.toggled.connect(self.update_parameters)
 
@@ -599,11 +600,7 @@ class MainWindow(QtGui.QMainWindow):
         splitter.addWidget(self.parameter_object)
         splitter.addWidget(self.view_box.native)
 
-        print(splitter.widget(1))
-
         self.setCentralWidget(splitter)
-
-        print(self.centralWidget().widget(1))
 
     def update_view(self, param):
         self.view_box.reset_parms(**param.props)
