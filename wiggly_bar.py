@@ -1,3 +1,4 @@
+from __future__ import division, print_function, absolute_import
 from vispy import app, visuals
 from vispy.visuals import transforms
 import sys
@@ -639,6 +640,7 @@ class MainWindow(QtGui.QMainWindow):
 
     def update_view(self, param):
         self.view_box.reset_parms(**param.props)
+
 
 def uncaught_exceptions(ex_type, ex_value, ex_traceback):
     lines = traceback.format_exception(ex_type, ex_value, ex_traceback)
