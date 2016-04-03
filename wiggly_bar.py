@@ -1,4 +1,4 @@
-from __future__ import division, print_function, absolute_import
+# from __future__ import division, print_function, absolute_import
 from vispy import app, visuals
 from vispy.visuals import transforms
 import sys
@@ -621,7 +621,7 @@ class MainWindow(QtGui.QMainWindow):
 
         self.resize(1067, 800)
         self.setWindowIcon(QtGui.QIcon('spring.ico'))
-        self.setWindowTitle('RIT Midterm Exam Investigator')
+        self.setWindowTitle('Nonlinear Physical Model Simulation')
 
         self.parameter_object = SetupWidget(self)
         self.parameter_object.param = param if param is not None else self.parameter_object.param
