@@ -1,4 +1,4 @@
-# from __future__ import division, print_function, absolute_import
+from __future__ import division, print_function, absolute_import
 from vispy import app, visuals
 from vispy.visuals import transforms
 import sys
